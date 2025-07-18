@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using System.Linq;
 
 namespace Floodgate;
 
@@ -47,5 +48,6 @@ public class Plugin : BaseUnityPlugin
         orig(self);
         World.CustomMerger.Apply();
         Registry.Apply();
+        UI.RemixModList.Apply();
     }
 }

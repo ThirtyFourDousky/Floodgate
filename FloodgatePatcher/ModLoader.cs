@@ -10,13 +10,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using static FloodgatePatcher.ModLoader;
 
 namespace FloodgatePatcher;
 public static class ModLoader
 {
     public static readonly string LatestVersion = "v1.10.4";
     public static string CurrentVersion = "";
+    public static bool IsLatest = false;
+
     const string newest = "newest";
     const string plugins = "plugins";
     const string patchers = "patchers";
@@ -50,7 +51,11 @@ public static class ModLoader
         //override MultiFolderLoader assembly resolving
         Hooks.Add(new Hook(typeof(ModManager).GetMethod("ResolveModDirectories", BindingFlags.NonPublic | BindingFlags.Static), ResolveModDirectories));
         Hooks.Add(new Hook(typeof(Utility).GetMethod("TryResolveDllAssembly", BindingFlags.Public | BindingFlags.Static, null, [typeof(AssemblyName), typeof(string), typeof(Assembly).MakeByRefType()], null), TryResolveDllAssemblyOverride));
+
+        IsLatest = (CurrentVersion == LatestVersion) || (int.Parse(new(CurrentVersion.Where(char.IsDigit).ToArray())) >= int.Parse(new(LatestVersion.Where(char.IsDigit).ToArray())));
+
         CustomLog.Log("Floodgate Modloader initiated. Latest Game Version: " + LatestVersion + " - Current Version: " + CurrentVersion);
+        CustomLog.Log("bool IsLatest = " + IsLatest.ToString());
     }
     public delegate bool delLoader<T>(AssemblyName assemblyName, string dir, out T assembly);
     public static bool FetchAssembly<T>(delLoader<T> loader, AssemblyName assemblyName, out T assembly) where T : class
@@ -66,7 +71,7 @@ public static class ModLoader
             {
                 return true;
             }
-            else if (IsLatest() &&
+            else if (IsLatest &&
                 ((Directory.Exists(dir = Path.Combine(mod.ModDir, newest, plugins)) &&
                 loader(assemblyName, dir, out assembly)) ||
                 (Directory.Exists(dir = Path.Combine(mod.ModDir, newest, patchers)) &&
@@ -261,17 +266,5 @@ public static class ModLoader
             CustomLog.Log("Loaded assembly " + assemblyName.Name + " from " + assembly.Location + " with default loader");
         }
         return res;
-    }
-
-    public static bool IsLatest()
-    {
-        bool IsLatest = CurrentVersion == LatestVersion;
-        if (!IsLatest)
-        {
-            int CurrentVer = int.Parse(new string(CurrentVersion.Where(char.IsDigit).ToArray()));
-            int LatestVer = int.Parse(new string(LatestVersion.Where(char.IsDigit).ToArray()));
-            IsLatest = CurrentVer > LatestVer;
-        }
-        return IsLatest;
     }
 }

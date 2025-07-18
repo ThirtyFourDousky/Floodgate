@@ -55,7 +55,7 @@
   <ItemGroup>
     <Compile Include="CustomLog.cs" />
     <Compile Include="Exceptions\LoopException.cs" />
-    <Compile Include="FloodgatePatchers\RainWorldDrought.cs" />
+    <None Include="FloodgatePatchers\RainWorldDrought.cs" />
     <Compile Include="ModLoader.cs" />
     <Compile Include="OtherHooks.cs" />
     <Compile Include="Patcher.cs" />

@@ -32,14 +32,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\Assembly-CSharp.dll</HintPath>
-    </Reference>
     <Reference Include="BepInEx">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\BepInEx.dll</HintPath>
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Rain World\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
-    <Reference Include="HOOKS-Assembly-CSharp">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\HOOKS-Assembly-CSharp.dll</HintPath>
+    <Reference Include="HOOKS-Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Rain World\BepInEx\plugins\HOOKS-Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\Mono.Cecil.dll</HintPath>
@@ -53,17 +51,19 @@
     <Reference Include="MonoMod.Utils">
       <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\MonoMod.Utils.dll</HintPath>
     </Reference>
+    <Reference Include="PUBLIC-Assembly-CSharp">
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Rain World\BepInEx\utils\PUBLIC-Assembly-CSharp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Unity.Mathematics">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\Unity.Mathematics.dll</HintPath>
+    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\users\Cries of the Sky\Documents\REFS\UnityEngine.CoreModule.dll</HintPath>
+    <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -72,10 +72,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Pugin.cs" />
     <Compile Include="Registry.cs" />
+    <Compile Include="UI\RemixModList.cs" />
     <Compile Include="World\CustomMerger.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FloodgatePatcher\FloodgatePatcher.csproj">
+      <Project>{b1b65e41-cb83-4d66-a648-26c0a243c6a7}</Project>
+      <Name>FloodgatePatcher</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
