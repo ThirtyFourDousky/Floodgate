@@ -9,7 +9,7 @@ internal static class ExTools
         {
             while(target.Contains(pattern))
             {
-                target = target.Substring(target.IndexOf(pattern) + 1);
+                target = target.Substring(target.IndexOf(pattern) + pattern.Length);
             }
         }
 
@@ -24,7 +24,7 @@ internal static class ExTools
         {
             while(target.Contains(pattern))
             {
-                target = target.Substring(target.IndexOf(pattern) + 1);
+                target = target.Substring(target.IndexOf(pattern) + pattern.Length);
             }
         }
 

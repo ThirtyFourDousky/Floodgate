@@ -1,4 +1,5 @@
 ﻿using Menu.Remix;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,12 +29,33 @@ public static class RemixModList
 
         applied = true;
     }
-
     private static void ModButton_GrafUpdate(On.Menu.Remix.MenuModList.ModButton.orig_GrafUpdate orig, MenuModList.ModButton self, float timeStacker)
     {
         orig(self, timeStacker);
         var v = self.infoDot();
         v.pixel.alpha = self._label.alpha;
+        v.steamPixel.alpha = self._label.alpha;
+
+        if (v.SteamDateAdded)
+        {
+            return;
+        }
+
+        if(v.SteamUpdate <= 0)
+        {
+            if (SteamManager.Initialized && v.mod.workshopMod && Steam.Workshop.ModLastUpdatedDT.TryGetValue(v.mod.workshopId, out var lastUpdated))
+            {
+
+                float timeDiff = Mathf.Clamp((float)((lastUpdated - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
+                v.steamPixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
+                v.SteamDateAdded = true;
+            }
+            v.SteamUpdate = 60;
+        }
+        else
+        {
+            v.SteamUpdate--;
+        }
     }
 
     private static void ModButton_ctor(On.Menu.Remix.MenuModList.ModButton.orig_ctor orig, MenuModList.ModButton self, MenuModList list, int index)
@@ -47,7 +69,12 @@ public static class RemixModList
         public MenuModList.ModButton ModButton { get; set; }
         public MenuModList MenuModList { get; set; }
         public FSprite pixel { get; set; }
+        public FSprite steamPixel { get; set; }
         public ModManager.Mod mod { get; set; }
+
+        public int SteamUpdate = 60;
+        public bool SteamDateAdded = false;
+
         public InfoDot(MenuModList.ModButton ModButton, MenuModList MenuModList)
         {
             this.ModButton = ModButton;
@@ -56,9 +83,17 @@ public static class RemixModList
 
             pixel = new FSprite("pixel")
             {
-                scaleX = 10,
+                scaleX = 8,
                 scaleY = 4,
-                anchorX = 0.15f,
+                anchorX = 0f,
+                anchorY = 0.4f,
+            };
+
+            steamPixel = new FSprite("pixel")
+            {
+                scaleX = 8,
+                scaleY = 4,
+                anchorX = 0.95f,
                 anchorY = 0.4f,
             };
             //check plugins
@@ -78,7 +113,7 @@ public static class RemixModList
                 if (Directory.GetFiles(path).Length > 0)
                 {
                     float timeDiff = Mathf.Clamp((float)((Directory.GetFiles(Path.Combine(mod.NewestPath, "plugins")).Max(File.GetCreationTimeUtc) - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
-                    pixel.color = timeDiff > 0.4? Color.Lerp(Color.yellow, Color.cyan, timeDiff - 0.4f) : Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, timeDiff);
+                    pixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
                     msg = timeDiff > 0.4 ? "Very Possibly updated for Watcher" : timeDiff > 0.2 ? "Possibly updated for Watcher" : timeDiff > 0.1 ? "Maybe updated for Watcher" : timeDiff != 0 ? "Possibly NOT updated for Watcher" : "Not Updated For Watcher";
                     goto FINISH;
                 }
@@ -89,7 +124,7 @@ public static class RemixModList
                 if (Directory.GetFiles(path).Length > 0)
                 {
                     float timeDiff = Mathf.Clamp((float)((Directory.GetFiles(Path.Combine(mod.path, "plugins")).Max(File.GetCreationTimeUtc) - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
-                    pixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, timeDiff - 0.4f) : Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, timeDiff);
+                    pixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
                     msg = timeDiff > 0.4 ? "Very Possibly updated for Watcher" : timeDiff > 0.2 ? "Possibly updated for Watcher" : timeDiff > 0.1 ? "Maybe updated for Watcher" : timeDiff != 0 ? "Possibly NOT updated for Watcher" : "Not Updated For Watcher";
                     goto FINISH;
                 }
@@ -99,6 +134,23 @@ public static class RemixModList
 
         FINISH:
             ModButton.myContainer.AddChild(pixel);
+
+            if (SteamManager.Initialized && mod.workshopMod)
+            {
+                if(Steam.Workshop.ModLastUpdatedDT.TryGetValue(mod.workshopId, out var lastUpdated))
+                {
+                    float timeDiff = Mathf.Clamp((float)((lastUpdated - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
+                    steamPixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
+                    SteamDateAdded = true;
+                }
+                else
+                {
+                    steamPixel.color = Color.black;
+                }
+                ModButton.myContainer.AddChild(steamPixel);
+                pixel.MoveInFrontOfOtherNode(steamPixel);
+            }
+
             ModButton.description += "\n" + msg;
         }
     }

@@ -49,5 +49,6 @@ public class Plugin : BaseUnityPlugin
         World.CustomMerger.Apply();
         Registry.Apply();
         UI.RemixModList.Apply();
+        Steam.Workshop.Apply();
     }
 }
