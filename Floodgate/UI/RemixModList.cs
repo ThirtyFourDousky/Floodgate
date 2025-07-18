@@ -68,7 +68,7 @@ public static class RemixModList
             string msg;
             if (targetedPlugin)
             {
-                pixel.color = Color.cyan;
+                pixel.color = Color.blue;
                 msg = "Correct Version";
                 goto FINISH;
             }
