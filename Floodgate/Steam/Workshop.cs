@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using MonoMod.RuntimeDetour;
 using Steamworks;
 
 namespace Floodgate.Steam;
@@ -17,6 +16,17 @@ public static class Workshop
         {
             queryCallback = CallResult<SteamUGCQueryCompleted_t>.Create(OnQueryResult);
 
+            AppId_t rwID = new AppId_t(RainWorldSteamManager.APP_ID);
+            PublishedFileId_t[] modIds = ModManager.InstalledMods.Where(i => i.workshopMod).Select(i => (PublishedFileId_t)i.workshopId).ToArray();
+            lastQueryHandle = SteamUGC.CreateQueryUGCDetailsRequest(modIds, (uint)modIds.Length);
+            queryCallback.Set(SteamUGC.SendQueryUGCRequest(lastQueryHandle));
+        }
+    }
+
+    public static void TryFetch()
+    {
+        if(SteamManager.Initialized && ModLastUpdatedDT.Count == 0)
+        {
             AppId_t rwID = new AppId_t(RainWorldSteamManager.APP_ID);
             PublishedFileId_t[] modIds = ModManager.InstalledMods.Where(i => i.workshopMod).Select(i => (PublishedFileId_t)i.workshopId).ToArray();
             lastQueryHandle = SteamUGC.CreateQueryUGCDetailsRequest(modIds, (uint)modIds.Length);

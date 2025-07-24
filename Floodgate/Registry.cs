@@ -1,16 +1,23 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Floodgate;
 
 public static class Registry
 {
-    public static List<RegisteredMod> Mods { get; private set; } = new();
+    public static readonly List<RegisteredMod> Mods = new();
     public static void Apply()
     {
-        foreach(ModManager.Mod mod in ModManager.ActiveMods)
+        Rescan();
+    }
+
+    public static void Rescan()
+    {
+        Mods.Clear();
+        foreach (ModManager.Mod mod in ModManager.ActiveMods)
         {
-            if(mod == null) {  continue; }
+            if (mod == null || Mods.Any(i=>i.mod.id == mod.id)) { continue; }
             string floodgatepath = Path.Combine(mod.TargetedPath, "floodgate");
             if (mod.hasTargetedVersionFolder && Directory.Exists(floodgatepath))
             {
@@ -28,8 +35,6 @@ public static class Registry
             }
         }
     }
-
-
 
     public class RegisteredMod
     {

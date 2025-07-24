@@ -1,9 +1,6 @@
 ﻿using BepInEx;
-using BepInEx.Logging;
 using BepInEx.MultiFolderLoader;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
-using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using System;
 using System.Collections.Generic;
@@ -21,6 +18,8 @@ public static class ModLoader
     const string newest = "newest";
     const string plugins = "plugins";
     const string patchers = "patchers";
+
+    public static string FloodgatePath = "";
 
     public static string LogPath = "";
 
@@ -54,12 +53,16 @@ public static class ModLoader
 
         IsLatest = (CurrentVersion == LatestVersion) || (int.Parse(new(CurrentVersion.Where(char.IsDigit).ToArray())) >= int.Parse(new(LatestVersion.Where(char.IsDigit).ToArray())));
 
-        CustomLog.Log("Floodgate Modloader initiated. Latest Game Version: " + LatestVersion + " - Current Version: " + CurrentVersion);
-        CustomLog.Log("bool IsLatest = " + IsLatest.ToString());
+        //get Floodgate Path
+        FloodgatePath = Directory.GetParent(Assembly.GetExecutingAssembly().Location).Parent.FullName;
+
+        CustomLog.Log("Floodgate Patcher initiated. Latest Game Version: " + LatestVersion + " - Current Version: " + CurrentVersion);
+        CustomLog.Log("Current Floodgate path is: " + FloodgatePath);
     }
     public delegate bool delLoader<T>(AssemblyName assemblyName, string dir, out T assembly);
     public static bool FetchAssembly<T>(delLoader<T> loader, AssemblyName assemblyName, out T assembly) where T : class
     {
+        AssemblyName FDLL = new(assemblyName.Name + ".fdll");
         foreach (Mod mod in ModManager.Mods)
         {
             string dir;
@@ -152,7 +155,7 @@ public static class ModLoader
         }
         if(patched)
         {
-            patchPath = Path.Combine(CacheLocation, assemblyName.Name + ".dll");
+            patchPath = Path.Combine(CacheLocation, assemblyName.Name +".dll");
             assembly.Write(patchPath);
         }
         else

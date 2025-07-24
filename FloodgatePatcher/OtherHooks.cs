@@ -1,12 +1,8 @@
-﻿using BepInEx.Logging;
-using MonoMod.RuntimeDetour;
+﻿using MonoMod.RuntimeDetour;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FloodgatePatcher;
 
@@ -25,7 +21,7 @@ public static class OtherHooks
     public static void InitCustomTemplates(orig_InitCustomTemplates orig)
     {
         orig();
-        if (ictCount < 10)
+        if (ictCount > 10 && ictCount < 20)
         {
             Patcher.logger.LogInfo("Custom Templates Stack Below:\n" + new System.Diagnostics.StackTrace().ToString());
         }

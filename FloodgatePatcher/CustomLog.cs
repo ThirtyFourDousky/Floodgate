@@ -1,28 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
 
 namespace FloodgatePatcher
 {
-    internal static class CustomLog
+    public static class CustomLog
     {
-        public static bool active = false;
-        internal static void Log(params string[] message)
-        {
-            if (!active)
-            {
-                Patcher.logger.LogDebug(message);
-                return;
-            }
-            foreach(string msg in message)
-            {
-                Log(msg);
-            }
-        }
-        internal static void Log(string message)
+        internal static bool active = false;
+        public static void Log(string message)
         {
             if (!active)
             {
@@ -37,14 +20,15 @@ namespace FloodgatePatcher
                 }
             }catch
             {
+                Patcher.logger.LogDebug(message);
                 return;
             }
         }
-        internal static void LogError(string message)
+        public static void LogError(string message)
         {
             if (!active)
             {
-                Patcher.logger.LogDebug(message);
+                Patcher.logger.LogError(message);
                 return;
             }
             try
@@ -56,6 +40,7 @@ namespace FloodgatePatcher
             }
             catch
             {
+                Patcher.logger.LogError(message);
                 return;
             }
         }

@@ -1,12 +1,10 @@
 ﻿using Menu.Remix;
-using Steamworks;
+using MonoMod.RuntimeDetour;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Floodgate.UI;
@@ -15,9 +13,11 @@ public static class RemixModList
 {
     //this may not be that accurate
     public static DateTime watcherRelease = new DateTime(2025, 3, 28);
-    public static TimeSpan elapsedTime => new DateTime(2025, 5, 16) - watcherRelease;
+    public static TimeSpan elapsedTime => new DateTime(2025, 6, 16) - watcherRelease;
     //readonly, no need to assign twice
     public static readonly ConditionalWeakTable<MenuModList.ModButton, InfoDot> InfoDots = new();
+
+    public static readonly List<IDetour> hooks = new();
 
     static bool applied = false;
     public static void Apply()
@@ -26,17 +26,77 @@ public static class RemixModList
 
         On.Menu.Remix.MenuModList.ModButton.ctor += ModButton_ctor;
         On.Menu.Remix.MenuModList.ModButton.GrafUpdate += ModButton_GrafUpdate;
+        On.Menu.Remix.MenuModList.ctor += MenuModList_ctor;
+        On.Menu.Remix.MenuModList.ModButton.Update += ModButton_Update;
+
+        hooks.Add(new Hook(typeof(ModManager.Mod).GetProperty("LocalizedDescription", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).GetGetMethod(),
+            LocalizedDesc));
 
         applied = true;
     }
+
+    public static string workshopurl = @"https://steamcommunity.com/workshop/filedetails/?id=";
+    private static void ModButton_Update(On.Menu.Remix.MenuModList.ModButton.orig_Update orig, MenuModList.ModButton self)
+    {
+        orig(self);
+        if (SteamManager.Initialized && self.itf.mod.workshopMod)
+        {
+            var v = self.infoDot();
+            if (self.MenuMouseMode)
+            {
+                if (self.MouseOver)
+                {
+                    if (!v.rheld && Input.GetMouseButton(1))
+                    {
+                        v.rheld = true;
+                        self.openWorkshop();
+                    }
+                    else if (v.rheld && !Input.GetMouseButton(1))
+                    {
+                        v.rheld = false;
+                    }
+                }
+            }
+        }
+    }
+
+    public static void openWorkshop(this MenuModList.ModButton self)
+    {
+        self.PlaySound(self.soundClick);
+        Plugin.logger.LogInfo("Opening Workshop URL for " + self.itf.mod.id);
+        Steamworks.SteamFriends.ActivateGameOverlayToWebPage(workshopurl + self.itf.mod.workshopId);
+    }
+
+    public delegate string orig_Mod_LocalizedDescription(ModManager.Mod self);
+    public static string LocalizedDesc(orig_Mod_LocalizedDescription orig, ModManager.Mod self)
+    {
+        string or = orig(self);
+        if (Plugin.RemixOptions.ShowWorkshopDate.Value && Steam.Workshop.ModLastUpdatedDT.TryGetValue(self.workshopId, out var DT))
+        {
+            or += Environment.NewLine + Environment.NewLine + "[[ " + DT.ToString("g") + " ]]";
+        }
+        return or;
+    }
+
+    private static void MenuModList_ctor(On.Menu.Remix.MenuModList.orig_ctor orig, MenuModList self, ConfigMenuTab tab)
+    {
+        orig(self, tab);
+        Steam.Workshop.TryFetch();
+    }
+
     private static void ModButton_GrafUpdate(On.Menu.Remix.MenuModList.ModButton.orig_GrafUpdate orig, MenuModList.ModButton self, float timeStacker)
     {
         orig(self, timeStacker);
         var v = self.infoDot();
-        v.pixel.alpha = self._label.alpha;
-        v.steamPixel.alpha = self._label.alpha;
+        v.pixel.alpha = Plugin.RemixOptions.ShowWorkshopDate.Value ? self._label.alpha : 0f;
+        v.steamPixel.alpha = Plugin.RemixOptions.ShowWorkshopDate.Value ? self._label.alpha : 0f;
 
-        if (v.SteamDateAdded)
+        if (!Plugin.RemixOptions.ShowWorkshopDate.Value)
+        {
+            return;
+        }
+
+        if (v.SteamDateAdded || !v.mod.workshopMod)
         {
             return;
         }
@@ -49,6 +109,7 @@ public static class RemixModList
                 float timeDiff = Mathf.Clamp((float)((lastUpdated - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
                 v.steamPixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
                 v.SteamDateAdded = true;
+                self.description += "\n" + lastUpdated.ToString("g");
             }
             v.SteamUpdate = 60;
         }
@@ -72,6 +133,8 @@ public static class RemixModList
         public FSprite steamPixel { get; set; }
         public ModManager.Mod mod { get; set; }
 
+        public bool rheld = false;
+
         public int SteamUpdate = 60;
         public bool SteamDateAdded = false;
 
@@ -80,7 +143,6 @@ public static class RemixModList
             this.ModButton = ModButton;
             this.MenuModList = MenuModList;
             mod = ModButton.itf.mod;
-
             pixel = new FSprite("pixel")
             {
                 scaleX = 8,
@@ -100,11 +162,9 @@ public static class RemixModList
             bool targetedPlugin = Directory.Exists(Path.Combine(mod.TargetedPath, "plugins"));
             bool newestPlugin = FloodgatePatcher.ModLoader.IsLatest && Directory.Exists(Path.Combine(mod.NewestPath, "plugins"));
             bool hasPlugin = Directory.Exists(Path.Combine(mod.path, "plugins"));
-            string msg;
             if (targetedPlugin)
             {
                 pixel.color = Color.blue;
-                msg = "Correct Version";
                 goto FINISH;
             }
             if (newestPlugin)
@@ -114,7 +174,6 @@ public static class RemixModList
                 {
                     float timeDiff = Mathf.Clamp((float)((Directory.GetFiles(Path.Combine(mod.NewestPath, "plugins")).Max(File.GetCreationTimeUtc) - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
                     pixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
-                    msg = timeDiff > 0.4 ? "Very Possibly updated for Watcher" : timeDiff > 0.2 ? "Possibly updated for Watcher" : timeDiff > 0.1 ? "Maybe updated for Watcher" : timeDiff != 0 ? "Possibly NOT updated for Watcher" : "Not Updated For Watcher";
                     goto FINISH;
                 }
             }
@@ -125,12 +184,10 @@ public static class RemixModList
                 {
                     float timeDiff = Mathf.Clamp((float)((Directory.GetFiles(Path.Combine(mod.path, "plugins")).Max(File.GetCreationTimeUtc) - watcherRelease).TotalMilliseconds / elapsedTime.TotalMilliseconds), 0, 1);
                     pixel.color = timeDiff > 0.4 ? Color.Lerp(Color.yellow, Color.cyan, Mathf.InverseLerp(0.4f, 1f, timeDiff)) : timeDiff != 0 ? Color.Lerp(new Color(0.8f, 0.2f, 0.1f), Color.yellow, Mathf.InverseLerp(0f, 0.4f, timeDiff)) : Color.red;
-                    msg = timeDiff > 0.4 ? "Very Possibly updated for Watcher" : timeDiff > 0.2 ? "Possibly updated for Watcher" : timeDiff > 0.1 ? "Maybe updated for Watcher" : timeDiff != 0 ? "Possibly NOT updated for Watcher" : "Not Updated For Watcher";
                     goto FINISH;
                 }
             }
             pixel.color = Color.gray;
-            msg = "Not a Code Mod";
 
         FINISH:
             ModButton.myContainer.AddChild(pixel);
@@ -150,8 +207,6 @@ public static class RemixModList
                 ModButton.myContainer.AddChild(steamPixel);
                 pixel.MoveInFrontOfOtherNode(steamPixel);
             }
-
-            ModButton.description += "\n" + msg;
         }
     }
 

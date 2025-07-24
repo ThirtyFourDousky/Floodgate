@@ -1,5 +1,4 @@
-﻿
-using System.Linq;
+﻿using System.Linq;
 
 internal static class ExTools
 {

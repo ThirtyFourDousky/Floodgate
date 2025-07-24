@@ -27,23 +27,28 @@ public static class CustomMerger
         On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues;
         On.WorldLoader.FindRoomFile += WorldLoader_FindRoomFile;
 
-        string[] paths = AssetManager.ListDirectory("floodgate", false, true);
+        Rescan();
 
+        applied = true;
+    }
+
+    public static void Rescan()
+    {
+        RegisteredPaths.Clear();
+        string[] paths = AssetManager.ListDirectory("floodgate", false, true);
         Plugin.logger.LogDebug("Scanning for custom mergers");
         foreach (string hpath in paths)
         {
-            string path = hpath.Replace('/', Path.DirectorySeparatorChar);
-            path = path.Replace('\\', Path.DirectorySeparatorChar);
+            string path = hpath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
             string key = path.trimStart(Path.DirectorySeparatorChar).trimEnd('.').ToUpperInvariant();
             if (!RegisteredPaths.ContainsKey(key))
             {
                 RegisteredPaths.Add(key, new List<string>());
             }
+            if (RegisteredPaths[key].Contains(path)) { continue; }
             RegisteredPaths[key].Add(path);
             Plugin.logger.LogDebug(" " + key + "  - " + path);
         }
-
-        applied = true;
     }
 
     static string overridepath = "floodgate" + Path.DirectorySeparatorChar + "override" + Path.DirectorySeparatorChar;
