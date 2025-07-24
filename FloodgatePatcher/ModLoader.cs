@@ -62,7 +62,6 @@ public static class ModLoader
     public delegate bool delLoader<T>(AssemblyName assemblyName, string dir, out T assembly);
     public static bool FetchAssembly<T>(delLoader<T> loader, AssemblyName assemblyName, out T assembly) where T : class
     {
-        AssemblyName FDLL = new(assemblyName.Name + ".fdll");
         foreach (Mod mod in ModManager.Mods)
         {
             string dir;
