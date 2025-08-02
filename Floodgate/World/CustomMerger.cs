@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Mono.Cecil.Cil;
+using MonoMod.RuntimeDetour;
+using MonoMod.Utils;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,26 +20,59 @@ public static class CustomMerger
     const string opREPLACE = "REPLACE"; //replace specific string by another, regex.replace
     const string opMERGE = "MERGE"; //default, replaces rooms with new connections
 
+    public static bool CRSpresent = false;
+    public static System.Reflection.Assembly CRS;
 
     public static readonly Dictionary<string,List<string>> RegisteredPaths = new();
     private static bool applied = false;
+
+    public static readonly List<IDetour> hooks = new();
     internal static void Apply()
     {
         if(applied) return;
 
-        On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues;
+        if(CRSpresent = AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "CustomRegionsSupport"))
+        {
+            CRS = AppDomain.CurrentDomain.GetAssemblies().First(a => a.GetName().Name == "CustomRegionsSupport");
+        }
+        
         On.WorldLoader.FindRoomFile += WorldLoader_FindRoomFile;
+
+        IL.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues1;
 
         Rescan();
 
         applied = true;
     }
 
+    private static void WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues1(MonoMod.Cil.ILContext il)
+    {
+        bool error = false;
+        try
+        {
+            ILProcessor processor = il.Body.GetILProcessor();
+            Instruction ret = processor.Body.Instructions.LastOrDefault(i => i.OpCode == OpCodes.Ret).Previous;
+            processor.InsertAfter(ret, processor.Create(OpCodes.Call, processor.Import(typeof(CustomMerger).GetMethod("RealizeCustomMerge", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))));
+            processor.InsertAfter(ret, processor.Create(OpCodes.Ldarg_0));
+        }catch(Exception ex)
+        {
+            error = true;
+            FloodgatePatcher.CustomLog.LogError("Error on WorldLoader.Ctor ILHook\n  " + ex.Message);
+        }
+        finally
+        {
+            if (!error)
+            {
+                Plugin.logger.LogInfo("Applied IL Hook for WorldLoader constructor");
+            }
+        }
+    }
+
     public static void Rescan()
     {
         RegisteredPaths.Clear();
         string[] paths = AssetManager.ListDirectory("floodgate", false, true);
-        Plugin.logger.LogDebug("Scanning for custom mergers");
+        FloodgatePatcher.CustomLog.Log("Scanning for custom mergers");
         foreach (string hpath in paths)
         {
             string path = hpath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
@@ -47,7 +83,7 @@ public static class CustomMerger
             }
             if (RegisteredPaths[key].Contains(path)) { continue; }
             RegisteredPaths[key].Add(path);
-            Plugin.logger.LogDebug(" " + key + "  - " + path);
+            FloodgatePatcher.CustomLog.Log(" " + key + "  - " + path);
         }
     }
 
@@ -70,26 +106,28 @@ public static class CustomMerger
             path = AssetManager.ResolveFilePath(overridepath + hint + roomName + additionalAppend);
             if (File.Exists(path))
             {
-                Plugin.logger.LogDebug("Loaded Floodgate Room " + roomName + "\n  - " + path);
+                Plugin.logger.LogDebug("Loaded Floodgate Room file " + roomName + "\n  - " + path);
                 return includeRootDirectory ? "file:///" + path : path;
             }
         }
         return orig(roomName, includeRootDirectory, additionalAppend, showWarning);
     }
-
-    private static void WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues(On.WorldLoader.orig_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues orig, WorldLoader self, RainWorldGame game, SlugcatStats.Name playerCharacter, SlugcatStats.Timeline timelinePosition, bool singleRoomWorld, string worldName, Region region, RainWorldGame.SetupValues setupValues)
+    public static void RealizeCustomMerge(WorldLoader self)
     {
-        orig(self, game, playerCharacter, timelinePosition, singleRoomWorld, worldName, region, setupValues);
-
+        string worldName = self.worldName;
+        SlugcatStats.Name playerCharacter = self.playerCharacter;
+        SlugcatStats.Timeline timelinePosition = self.timelinePosition;
         if (!RegisteredPaths.ContainsKey(worldName.ToUpperInvariant()))
         {
+            FloodgatePatcher.CustomLog.Log("[World Loader] Loading region " + worldName + "\n  Current slugcat: " + playerCharacter.value + "\n  Current timeline: " + timelinePosition.value);
             return;
         }
 
         Plugin.logger.LogDebug("Trying to load Custom merging for " + worldName);
+        FloodgatePatcher.CustomLog.Log("[World Loader] Loading custom merge for " + worldName + "\n  Current slugcat: " + playerCharacter.value + "\n  Current timeline: " + timelinePosition.value);
         CustomLines current = new(self.lines);
-        CustomLines mLines = new(RegisteredPaths[worldName.ToUpperInvariant()], playerCharacter.value);
-        Plugin.logger.LogDebug("Lines Loaded:\n" + string.Join("\n  ", mLines.Lines));
+        CustomLines mLines = new(RegisteredPaths[worldName.ToUpperInvariant()], timelinePosition.value, playerCharacter.value);
+        FloodgatePatcher.CustomLog.Log("[World Loader] Lines Loaded:\n" + string.Join("\n  ", mLines.Lines));
         //conditional links
         foreach (string mLine in mLines.conditionallinks)
         {
@@ -115,7 +153,7 @@ public static class CustomMerger
         }
 
         self.lines = current.Lines;
-        Plugin.logger.LogDebug("World Lines Result:\n" + string.Join("\n  ", self.lines));
+        FloodgatePatcher.CustomLog.Log("[World Loader] World Lines Result:\n" + string.Join("\n  ", self.lines));
     }
 
     public static void DoOperation(ref List<string> lines, CustomLine merge)
@@ -138,12 +176,12 @@ public static class CustomMerger
         }
         else if(merge.operand == opMERGE || string.IsNullOrWhiteSpace(merge.operand))
         {
-            string pattern = merge.line.Split(':')[0];
+            string pattern = merge.line.Split(':')[0] + ":";
             if (lines.Any(i => i.StartsWith(pattern)))
             {
                 for (int i = 0; i < lines.Count; i++)
                 {
-                    if (lines[i].StartsWith(merge.line.Split(':')[0]))
+                    if (lines[i].StartsWith(pattern))
                     {
                         lines[i] = merge.line;
                     }
@@ -170,7 +208,7 @@ public static class CustomMerger
             wrdCRIT, ..creatures, "END " + wrdCRIT,
             wrdBLK, ..batmigrationblockages, "END " + wrdBLK,
         ];
-        public CustomLines(List<string> paths, string name)
+        public CustomLines(List<string> paths, string timelinePosition, string characterName)
         {
             foreach (string path in paths)
             {
@@ -188,28 +226,37 @@ public static class CustomMerger
                 {
                     string cur = wLines[i];
 
+                    if(string.IsNullOrWhiteSpace(cur)) continue;
+
                     int scugStart = cur.IndexOf("((");
                     int scugEnd = cur.IndexOf("))");
-                    if (scugStart > 0 && scugEnd > 0)
+                    if (scugStart != -1 && scugEnd != -1)
                     {
                         var slugcats = cur.Substring(scugStart + 2, scugEnd - scugStart - 2).Split(',');
                         if (slugcats.Length > 0)
                         {
                             List<string> pSlugcats = slugcats.Where(i => !i.StartsWith("!")).ToList();
-                            if (pSlugcats.Count > 0 && !pSlugcats.Contains(name))
+                            if (pSlugcats.Count > 0 && (!pSlugcats.Contains(timelinePosition) || !pSlugcats.Contains(characterName)))
                             {
                                 continue;
                             }
                             List<string> nSlugcats = slugcats.Where(i => i.StartsWith("!")).ToList();
-                            if (nSlugcats.Count > 0 && nSlugcats.Contains(name.trimStart('!')))
+                            if (nSlugcats.Count > 0 && (nSlugcats.Contains("!"+timelinePosition) || nSlugcats.Contains("!"+characterName)))
                             {
                                 continue;
                             }
                         }
+                        cur = cur.Remove(scugStart, scugEnd - scugStart + 2);
+
+                    }
+                    else if (scugStart == -1 ^ scugEnd == -1)
+                    {
+                        FloodgatePatcher.CustomLog.LogError("Broken line\n    " + cur + "\n    missing " + (scugStart == -1 ? "start `((`" : "end `))`") + " player character array pattern");
+                        continue;
                     }
                     int modsStart = cur.IndexOf("{{");
                     int modsEnd = cur.IndexOf("}}");
-                    if (modsStart > 0 && modsEnd > 0)
+                    if (modsStart != -1 && modsEnd != -1)
                     {
                         var mods = cur.Substring(modsStart + 2, modsEnd - modsStart - 2).Split(',');
                         if (mods.Length > 0)
@@ -240,24 +287,33 @@ public static class CustomMerger
                                 continue;
                             }
                         }
+                        cur = cur.Remove(modsStart, modsEnd - modsStart + 2);
                     }
-                    int cuttingPoint = scugEnd > 0 || modsEnd > 0 ? ((scugEnd > modsEnd ? scugEnd : modsEnd) + 2) : 0;
-
-                    lines.Add(cur.Substring(cuttingPoint));
+                    else if(modsStart == 1 ^ modsEnd == 1)
+                    {
+                        FloodgatePatcher.CustomLog.LogError("Broken line\n    " + cur + "\n    missing " + (modsStart == -1 ? "start `{{`" : "end `}}`") + " mods array pattern");
+                        continue;
+                    }
+                    if(cur.Contains("[") ^ cur.Contains("]"))
+                    {
+                        FloodgatePatcher.CustomLog.LogError("Broken line\n    " + cur + "\n    missing " + (cur.Contains("]") ? "start `[`" : "end `]`") + " operands array pattern");
+                        continue;
+                    }
+                    lines.Add(cur);
                 }
-                if (lines.Contains(wrdCLINKS))
+                if (lines.Contains(wrdCLINKS) && lines.Contains("END " + wrdCLINKS))
                 {
                     conditionallinks.AddRange(lines.GetRange(lines.IndexOf(wrdCLINKS) + 1, lines.IndexOf("END " + wrdCLINKS) - lines.IndexOf(wrdCLINKS) - 1));
                 }
-                if (lines.Contains(wrdROOMS))
+                if (lines.Contains(wrdROOMS) && lines.Contains("END " + wrdROOMS))
                 {
                     rooms.AddRange(lines.GetRange(lines.IndexOf(wrdROOMS) + 1, lines.IndexOf("END " + wrdROOMS) - lines.IndexOf(wrdROOMS) - 1));
                 }
-                if (lines.Contains(wrdCRIT))
+                if (lines.Contains(wrdCRIT) && lines.Contains("END " + wrdCRIT))
                 {
                     creatures.AddRange(lines.GetRange(lines.IndexOf(wrdCRIT) + 1, lines.IndexOf("END " + wrdCRIT) - lines.IndexOf(wrdCRIT) - 1));
                 }
-                if (lines.Contains(wrdBLK))
+                if (lines.Contains(wrdBLK) && lines.Contains("END " + wrdBLK))
                 {
                     batmigrationblockages.AddRange(lines.GetRange(lines.IndexOf(wrdBLK) + 1, lines.IndexOf("END " + wrdBLK) - lines.IndexOf(wrdBLK) - 1));
                 }
@@ -269,19 +325,19 @@ public static class CustomMerger
         }
         public CustomLines(List<string> lines)
         {
-            if (lines.Contains(wrdCLINKS))
+            if (lines.Contains(wrdCLINKS) && lines.Contains("END " + wrdCLINKS))
             {
                 conditionallinks.AddRange(lines.GetRange(lines.IndexOf(wrdCLINKS) + 1, lines.IndexOf("END " + wrdCLINKS) - lines.IndexOf(wrdCLINKS) - 1));
             }
-            if (lines.Contains(wrdROOMS))
+            if (lines.Contains(wrdROOMS) && lines.Contains("END " + wrdROOMS))
             {
                 rooms.AddRange(lines.GetRange(lines.IndexOf(wrdROOMS) + 1, lines.IndexOf("END " + wrdROOMS) - lines.IndexOf(wrdROOMS) - 1));
             }
-            if (lines.Contains(wrdCRIT))
+            if (lines.Contains(wrdCRIT) && lines.Contains("END " + wrdCRIT))
             {
                 creatures.AddRange(lines.GetRange(lines.IndexOf(wrdCRIT) + 1, lines.IndexOf("END " + wrdCRIT) - lines.IndexOf(wrdCRIT) - 1));
             }
-            if (lines.Contains(wrdBLK))
+            if (lines.Contains(wrdBLK) && lines.Contains("END " + wrdBLK))
             {
                 batmigrationblockages.AddRange(lines.GetRange(lines.IndexOf(wrdBLK) + 1, lines.IndexOf("END " + wrdBLK) - lines.IndexOf(wrdBLK) - 1));
             }

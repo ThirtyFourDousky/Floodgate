@@ -1,5 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Floodgate;
 
@@ -41,9 +43,34 @@ public class Plugin : BaseUnityPlugin
             ictCount++;
         };
 
+        On.Menu.EndgameMeter.NotchMeter.ctor += NotchMeter_ctor;
+
         FloodgatePatcher.CustomLog.Log("Floodgate plugin initialized");
 
         woke = true;
+    }
+
+    private void NotchMeter_ctor(On.Menu.EndgameMeter.NotchMeter.orig_ctor orig, Menu.EndgameMeter.NotchMeter self, Menu.EndgameMeter owner)
+    {
+        if (self == null || owner == null) return;
+
+        WinState.ListTracker tracker = owner.tracker as WinState.ListTracker;
+
+        if (ModManager.MSC)
+        {
+            if(owner.tracker.ID == MoreSlugcats.MoreSlugcatsEnums.EndgameID.Nomad)
+            {
+                for(int i = 0; i < tracker.myList.Count; i++)
+                {
+                    if (tracker.myList[i] >= Region.GetFullRegionOrder().Count)
+                    {
+                        tracker.myList[i] = 0;
+                    }
+                }
+            }
+        }
+
+        orig(self, owner);
     }
 
     bool onmodsinit = false;
@@ -72,5 +99,6 @@ public class Plugin : BaseUnityPlugin
         Registry.Apply();
         UI.RemixModList.Apply();
         Steam.Workshop.Apply();
+        ExHooks.HookManager.ApplyHooks();
     }
 }

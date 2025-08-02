@@ -75,6 +75,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Exceptions\LoopException.cs" />
+    <Compile Include="ExHooks\HookManager.cs" />
     <Compile Include="ExTools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Pugin.cs" />
@@ -92,6 +93,10 @@
       <Project>{b1b65e41-cb83-4d66-a648-26c0a243c6a7}</Project>
       <Name>FloodgatePatcher</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ExHooks\FHook\" />
+    <Folder Include="ExHooks\FIL\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

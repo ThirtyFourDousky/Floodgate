@@ -47,7 +47,7 @@ public static class Registry
             floodgate = floodgatepath;
             id = mod.id;
             this.mod = mod;
-            Plugin.logger.LogDebug("Registered Mod " + mod.name + " (" + id + ")");
+            FloodgatePatcher.CustomLog.Log("Registered Mod " + mod.name + " (" + id + ")");
         }
     }
 }
