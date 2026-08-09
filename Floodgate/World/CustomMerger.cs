@@ -100,11 +100,6 @@ public static class CustomMerger
     static string overridepath = "floodgate" + Path.DirectorySeparatorChar + "override" + Path.DirectorySeparatorChar;
     private static string WorldLoader_FindRoomFile(On.WorldLoader.orig_FindRoomFile orig, string roomName, bool includeRootDirectory, string additionalAppend, bool showWarning)
     {
-        //System.Threading.Tasks.Task<string> replacedRes = null;
-        //System.Threading.Tasks.Task<string> replacedRes2 = null;
-        //System.Threading.Tasks.Task<string> res;
-        //System.Threading.Tasks.Task<string> res2;
-
         List<string> commonPaths = [
             "World" + Path.DirectorySeparatorChar + roomName.Split('_')[0] + "-Rooms" + Path.DirectorySeparatorChar,
             "World" + Path.DirectorySeparatorChar + "Gates" + Path.DirectorySeparatorChar,
@@ -115,48 +110,6 @@ public static class CustomMerger
         {
             commonPaths.Add("Levels" + Path.DirectorySeparatorChar + "Challenges" + Path.DirectorySeparatorChar);
         }
-
-        /*
-        if (replacedRoomName.TryGetValue(roomName, out var replacedName))
-        {
-            replacedRes = System.Threading.Tasks.Task<string>.Factory.StartNew(() =>
-            {
-                string replacedPath;
-                foreach (string hint in commonPaths)
-                {
-                    replacedPath = AssetManager.ResolveFilePath(overridepath + hint + replacedName + additionalAppend);
-                    if (File.Exists(replacedPath))
-                    {
-                        return includeRootDirectory ? "file:///" + replacedPath : replacedPath;
-                    }
-                }
-                return null;
-            });
-            replacedRes2 = System.Threading.Tasks.Task.Factory.StartNew(() =>
-            {
-                return orig(replacedName, includeRootDirectory, additionalAppend, showWarning);
-            });
-        }
-        res = System.Threading.Tasks.Task<string>.Factory.StartNew(() =>
-        {
-            string path;
-            foreach (string hint in commonPaths)
-            {
-                path = AssetManager.ResolveFilePath(overridepath + hint + roomName + additionalAppend);
-                if (File.Exists(path))
-                {
-                    return includeRootDirectory ? "file:///" + path : path;
-                }
-            }
-            return null;
-        });
-        res2 = System.Threading.Tasks.Task<string>.Factory.StartNew(() =>
-        {
-            return orig(roomName, includeRootDirectory, additionalAppend, showWarning);
-        });
-
-        return (replacedRes is not null ? replacedRes.GetAwaiter().GetResult() ?? replacedRes2.GetAwaiter().GetResult() : null) ?? res.GetAwaiter().GetResult() ?? res2.GetAwaiter().GetResult();
-        */
 
         string path;
         foreach (string hint in commonPaths)

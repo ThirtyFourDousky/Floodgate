@@ -101,7 +101,8 @@ public static class ModLoader
 
         //get Floodgate Path
         DirectoryInfo PatcherDir = Directory.GetParent(Assembly.GetExecutingAssembly().Location);
-        while(!PatcherDir.GetFiles().Any(i=>i.Name == "modinfo.json"))
+        //while(!PatcherDir.GetFiles().Any(i=>i.Name == "modinfo.json"))
+        while(!File.Exists(PatcherDir.FullName + Path.DirectorySeparatorChar + "modinfo.json"))
         {
             PatcherDir = PatcherDir.Parent;
         }

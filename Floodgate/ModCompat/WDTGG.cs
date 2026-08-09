@@ -17,77 +17,9 @@ public static class WDTGGcompat
     internal static bool HookFound = false;
     public static void Apply()
     {
-        //hooks.Add(new ILHook(typeof(WDTGG.Hooks).GetMethod("Player_NewRoom", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), IL_WDTGG_NewRoom));
         hooks.Add(new ILHook(typeof(WDTGG.Hooks).GetMethod("Player_NewRoom", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), IL_WDTGG_NewRoom2));
         hooks.Add(new Hook(typeof(WDTGG.Hooks).GetMethod("Player_NewRoom", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic), hook_WDTGGNewRoom));
     }
-    /*
-    //this will basically override WDTGG
-    public delegate void NewRoom(Player self, Room roomIn);
-    public static void IL_WDTGG_NewRoom(ILContext IL)
-    {
-        try
-        {
-            ILCursor c = new(IL);
-            c.Goto(0);
-            c.Emit(OpCodes.Nop);
-            c.Emit(OpCodes.Ldarg_1);
-            c.Emit(OpCodes.Ldarg_2);
-            c.EmitDelegate<NewRoom>(WDTGGtask);
-            if (c.TryGotoNext(MoveType.After, x => x.Match(OpCodes.Callvirt), x => x.MatchNop()))
-            {
-                HookFound = true;
-                c.Emit(OpCodes.Ret);
-                //c.RemoveRange((c.Instrs.Count - c.Index) + 1);
-            }
-            else
-            {
-                CustomLog.Log("[WDTGG Threading Stuff] IL hook NewRoom couldn't find injection point\n" + IL.ToString());
-            }
-        }
-        catch (Exception e)
-        {
-            CustomLog.Log("[WDTGG Threading Stuff] IL hook NewRoom failed\n" + e.ToString());
-        }
-    }
-    public static void WDTGGtask(Player self, Room roomIn)
-    {
-        try
-        {
-            if (!HookFound) return;
-            if (roomIn.IsGateRoom())
-            {
-                if (WDTGG.Hooks.hasAnnounced < 1)
-                {
-                    WDTGG.Hooks.hasAnnounced++;
-                    if (task != null)
-                    {
-                        task.Wait();
-                        task = null;
-                    }
-                    task = Task.Run(delegate ()
-                    {
-                        string[] roomtext = roomIn.abstractRoom.name.Split('_');
-                        string regionAcronym;
-                        if ((regionAcronym = roomtext[1]) == Region.GetVanillaEquivalentRegionAcronym(roomIn.world.name)) { regionAcronym = roomtext[2]; }
-                        roomIn.game.cameras[0].hud.textPrompt.AddMessage(
-                            RWCustom.Custom.rainWorld.inGameTranslator.Translate("Gate to ") + RWCustom.Custom.rainWorld.inGameTranslator.Translate(
-                            Region.GetRegionFullName(Region.GetProperRegionAcronym(SlugcatStats.SlugcatToTimeline(self.SlugCatClass), regionAcronym), self.SlugCatClass)
-                            ), 0, 100, false, false);
-                    });
-                }
-            }
-            else
-            {
-                WDTGG.Hooks.hasAnnounced = 0;
-            }
-        }
-        catch (Exception e)
-        {
-            CustomLog.Log("[WDTGG Threading Stuff] WDTGGtask fucked up\n" + e.ToString());
-        }
-    }
-    */
     public static void IL_WDTGG_NewRoom2(ILContext IL)
     {
         try

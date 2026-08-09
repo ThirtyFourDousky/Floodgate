@@ -227,7 +227,7 @@ public static class TurboBakerStuff
                 }
 
                 statusText = "Running World Loaders";
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
                     while (loaders.Any(i => !i.Finished))
                     {
@@ -239,15 +239,16 @@ public static class TurboBakerStuff
                                 absLoad.Start();
                             }
                         }
-                        Thread.Sleep(1);
+                        await Task.Delay(1);
                     }
                 });
 
-                Parallel.ForEach(loaders, parOpt, (loader) =>
+                Parallel.ForEach(loaders, parOpt, async (loader) =>
                 {
                     while (!loader.Finished)
                     {
                         loader.Update();
+                        await Task.Delay(1);
                     }
                 });
                 statusText = "Preparing rooms";

@@ -15,7 +15,7 @@ public partial class Plugin : BaseUnityPlugin
 {
     public const string GUID = "floodgate";
     public const string Name = "Floodgate";
-    public const string Version = "0.1.291";
+    public const string Version = "0.1.292";
 
     public static Plugin? Instance { get; private set; }
 
