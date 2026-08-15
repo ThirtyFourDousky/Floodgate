@@ -44,8 +44,6 @@ public static class CustomMerger
             CRS = AppDomain.CurrentDomain.GetAssemblies().First(a => a.GetName().Name == "CustomRegionsSupport");
         }
 
-        //On.WorldLoader.FindRoomFile += WorldLoader_FindRoomFile;
-
         IL.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues1;
 
         Rescan();
@@ -98,30 +96,6 @@ public static class CustomMerger
     }
 
     static string overridepath = "floodgate" + Path.DirectorySeparatorChar + "override" + Path.DirectorySeparatorChar;
-    private static string WorldLoader_FindRoomFile(On.WorldLoader.orig_FindRoomFile orig, string roomName, bool includeRootDirectory, string additionalAppend, bool showWarning)
-    {
-        List<string> commonPaths = [
-            "World" + Path.DirectorySeparatorChar + roomName.Split('_')[0] + "-Rooms" + Path.DirectorySeparatorChar,
-            "World" + Path.DirectorySeparatorChar + "Gates" + Path.DirectorySeparatorChar,
-            "World" + Path.DirectorySeparatorChar + "Gates" + Path.DirectorySeparatorChar + "gate_shelters" + Path.DirectorySeparatorChar,
-            "Levels" + Path.DirectorySeparatorChar,
-            ];
-        if (ModManager.MSC && roomName.ToLowerInvariant().Contains("challenge"))
-        {
-            commonPaths.Add("Levels" + Path.DirectorySeparatorChar + "Challenges" + Path.DirectorySeparatorChar);
-        }
-
-        string path;
-        foreach (string hint in commonPaths)
-        {
-            path = AssetManager.ResolveFilePath(overridepath + hint + roomName + additionalAppend);
-            if (File.Exists(path))
-            {
-                return includeRootDirectory ? "file:///" + path : path;
-            }
-        }
-        return orig(roomName, includeRootDirectory, additionalAppend, showWarning);
-    }
     public static void RealizeCustomMerge(WorldLoader self, ref string[] worldfile)
     {
         //replacedRoomName.Clear();

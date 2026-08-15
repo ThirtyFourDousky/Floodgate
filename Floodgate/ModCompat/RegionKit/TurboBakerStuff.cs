@@ -27,11 +27,34 @@ public static class TurboBakerStuff
         hooks.Add(new ILHook(typeof(TurboBakerTab).GetMethod("Update", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance), IL_Update));
     }
 
-    public static IEnumerable<Region> EnumerableLoadAllRegions(SlugcatStats.Timeline timelineIndex, RainWorldGame game)
+    //unused for now
+    public static IEnumerable<Region> EnumerableLoadRegions(SlugcatStats.Timeline timelineIndex, RainWorldGame game, IEnumerable<string> regionsToBake)
     {
         string path = AssetManager.ResolveFilePath("World" + Path.DirectorySeparatorChar + "regions.txt");
         string[] array = new string[1] { "" };
         
+        if (File.Exists(path))
+        {
+            array = File.ReadAllLines(path);
+        }
+
+        Region[] array2 = new Region[array.Length];
+        int num = 0;
+        for (int i = 0; i < array.Length; i++)
+        {
+            //no need to load ALL regions if we aren't going to bake all of them
+            if (regionsToBake.Contains(array[i]))
+            {
+                yield return array2[i] = new Region(array[i], num, i, game, timelineIndex);
+                num += array2[i].numberOfRooms;
+            }
+        }
+    }
+    public static IEnumerable<Region> EnumerableLoadAllRegions(SlugcatStats.Timeline timelineIndex, RainWorldGame game)
+    {
+        string path = AssetManager.ResolveFilePath("World" + Path.DirectorySeparatorChar + "regions.txt");
+        string[] array = new string[1] { "" };
+
         if (File.Exists(path))
         {
             array = File.ReadAllLines(path);
@@ -218,7 +241,7 @@ public static class TurboBakerStuff
                     //foreach (Region item in from x in Region.LoadAllRegions(SlugcatStats.SlugcatToTimeline(name), null)
                     //                        where regionsToBake.Contains(x.name)
                     //                        select x)
-                    foreach (Region item in EnumerableLoadAllRegions(SlugcatStats.SlugcatToTimeline(name), null).Where(x=>regionsToBake.Contains(x.name)))
+                    foreach (Region item in EnumerableLoadAllRegions(SlugcatStats.SlugcatToTimeline(name), null).Where(x => regionsToBake.Contains(x.name)))
                     {
                         WorldLoader worldLoader = new WorldLoader(null, name, SlugcatStats.SlugcatToTimeline(name), singleRoomWorld: false, item.name, item, RainWorld.LoadSetupValues(distributionBuild: true), WorldLoader.LoadingContext.MAPMERGE);
                         worldLoader.NextActivity();

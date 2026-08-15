@@ -25,6 +25,12 @@ public static class IndexedEntranceClass
             ILLabel tryIL = c.MarkLabel();
             ILLabel catchIL = c.DefineLabel();
             ILLabel endIL = c.DefineLabel();
+
+            //ignore directly if targetRoom is -1, exceptions are bad for performance. but the try will still be here cuz im untrustworthy
+            c.Emit(OpCodes.Ldarg_2);
+            c.Emit(OpCodes.Ldc_I4_M1);
+            c.Emit(OpCodes.Beq_S, endIL);
+
             c.GotoNext(MoveType.Before, x => x.MatchLdarg(0));
             c.Emit(OpCodes.Leave_S, endIL);
             c.MarkLabel(catchIL);
