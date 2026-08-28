@@ -20,6 +20,7 @@ public static class CustomMerger
 
     const string opREMOVE = "REMOVE"; //removes line that matches specified string
     const string opREMOVEALL = "REMOVEALL"; //removes all lines that contains the specified string
+    const string opREMOVELINESTART = "REMOVELINESTART"; //removes lines that starts with the specific string
     const string opREPLACEALL = "REPLACEALL"; //replace specific string by another, regex.replace
     const string opREPLACE = "REPLACE"; // three parameter line, replaces a specific string under a line that matches the first parameter
     const string opMERGE = "MERGE"; //default, replaces rooms with new connections
@@ -237,6 +238,7 @@ public static class CustomMerger
         worldfile = WorldLines.ToArray();
     }
 
+#warning remember to refactor these stupid linqs
     public static void DoOperation(ref List<string> lines, CustomLine merge)
     {
         if (string.IsNullOrWhiteSpace(merge.line))
@@ -255,6 +257,11 @@ public static class CustomMerger
         {
             FloodgatePatcher.CustomLog.Log("[World Loader] removing all lines that contains " + merge.line);
             lines.RemoveAll(i => i.Contains(merge.line));
+        }
+        else if(merge.operand == opREMOVELINESTART)
+        {
+            FloodgatePatcher.CustomLog.Log("[World Loader] removing all lines that starts with " + merge.line);
+            lines.RemoveAll(i => i.StartsWith(merge.line));
         }
         else if (merge.operand == opREPLACE)
         {
